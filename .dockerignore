@@ -1,0 +1,12 @@
+*
+!pyproject.toml
+!uv.lock
+!main.py
+!src/
+!templates/
+!static/
+
+.DS_Store
+__pycache__/
+.pytest_cache/
+.vscode/

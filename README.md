@@ -30,20 +30,18 @@ The Saga pattern is a design pattern for managing distributed transactions acros
 
 ### Prerequisites
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/)
+- [Docker Compose](https://docs.docker.com/compose/)
 
 ### Installation Steps
 
-1. **Install dependencies:**
-
+1. **Build the image**
    ```bash
-   uv sync --frozen
+   COMPOSE_BAKE=true docker compose build
    ```
 
 2. **Run the application:**
    ```bash
-   uv run main.py
+   docker compose up
    ```
 
 3. **Access the application:**
@@ -68,6 +66,13 @@ The Saga pattern is a design pattern for managing distributed transactions acros
 
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
+
+## 📚 Additional Documentation
+
+For more detailed information about this project, please refer to:
+
+- **[Saga Flowchart](saga_flowchart.md)**: Complete workflow diagrams and visual representations of the Saga pattern implementation
+- **[Interactive UI Guide](UI_README.md)**: Detailed guide for using the web interface, including test scenarios and troubleshooting
 
 ## 🧪 Testing the Saga Pattern
 

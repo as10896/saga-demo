@@ -5,19 +5,18 @@ A beautiful, interactive web interface for exploring and understanding the Saga 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/)
+- [Docker Compose](https://docs.docker.com/compose/)
 
 ### Running the Application
 
-1. **Install dependencies:**
+1. **Build the image**
    ```bash
-   uv sync --frozen
+   COMPOSE_BAKE=true docker compose build
    ```
 
-2. **Start the application:**
+2. **Run the application:**
    ```bash
-   uv run main.py
+   docker compose up
    ```
 
 3. **Open your browser:**

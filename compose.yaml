@@ -1,0 +1,6 @@
+services:
+  app:
+    image: saga-demo
+    build: .
+    ports:
+      - 127.0.0.1:${PORT:-8000}:8000
