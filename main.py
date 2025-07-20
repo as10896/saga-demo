@@ -1,31 +1,83 @@
 import logging
 import uuid
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 
-from src.database import inventory_db, orders_db, user_balances
-from src.models import Order, OrderStatus
+from src.database import inventory_db, orders_db, saga_transactions, user_balances
+from src.models import Order
 from src.orchestrator import SagaOrchestrator
+from src.schemas import (
+    BalancesResponse,
+    CreateOrderRequest,
+    CreateOrderResponse,
+    ErrorResponse,
+    HealthResponse,
+    InventoryResponse,
+    OrderResponse,
+    RootResponse,
+    SagaTransactionResponse,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Saga Pattern Demo", version="1.0.0")
+description = """
+A demonstration of the Saga Pattern for distributed transactions.
+
+This API showcases how to implement saga orchestration for order processing,
+including validation, inventory management, payment processing, and shipping.
+
+## Features
+
+* **Order Management**: Create and retrieve orders
+* **Saga Transactions**: Monitor distributed transaction progress
+* **Inventory Tracking**: Check product availability
+* **User Balances**: Monitor user account balances
+* **Compensation Logic**: Automatic rollback on failures
+
+## How it works
+
+1. Create an order using the `/orders` endpoint
+2. The system automatically executes a saga with these steps:
+    - Validate order
+    - Reserve inventory
+    - Process payment
+    - Ship order
+3. If any step fails, compensation actions are executed in reverse order
+4. Monitor progress using the `/sagas/{saga_id}` endpoint
+"""
+
+app = FastAPI(
+    title="Saga Pattern Demo API",
+    version="1.0.0",
+    description=description,
+)
 
 # Initialize orchestrator
 saga_orchestrator = SagaOrchestrator()
 
 
-@app.post("/orders")
-async def create_order(order_data: dict):
+@app.post(
+    "/orders",
+    response_model=CreateOrderResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid order data"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+    },
+    summary="Create a new order",
+    description="Create a new order and execute the saga pattern transaction to process it through all required steps including validation, inventory reservation, payment processing, and shipping.",
+    tags=["Orders"],
+)
+async def create_order(order_data: CreateOrderRequest):
     """Create a new order and execute saga"""
     order = Order(
         id=str(uuid.uuid4()),
-        user_id=order_data["user_id"],
-        product_id=order_data["product_id"],
-        quantity=order_data["quantity"],
-        amount=order_data["amount"],
+        user_id=order_data.user_id,
+        product_id=order_data.product_id,
+        quantity=order_data.quantity,
+        amount=order_data.amount,
     )
 
     orders_db[order.id] = order
@@ -33,55 +85,99 @@ async def create_order(order_data: dict):
     # Execute saga
     saga = await saga_orchestrator.execute_saga(order)
 
-    return {
-        "order_id": order.id,
-        "saga_id": saga.id,
-        "status": saga.status,
-        "steps": saga.steps,
-    }
+    return CreateOrderResponse(
+        order_id=order.id,
+        saga_id=saga.id,
+        status=saga.status,
+        steps=[{"name": step.name, "status": step.status.value} for step in saga.steps],
+    )
 
 
-@app.get("/orders/{order_id}")
+@app.get(
+    "/orders/{order_id}",
+    response_model=OrderResponse,
+    responses={
+        404: {"model": ErrorResponse, "description": "Order not found"},
+    },
+    summary="Get order details",
+    description="Retrieve detailed information about a specific order by its ID.",
+    tags=["Orders"],
+)
 async def get_order(order_id: str):
     """Get order details"""
     if order_id not in orders_db:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
+        )
 
-    return orders_db[order_id]
+    return OrderResponse(**orders_db[order_id].model_dump())
 
 
-@app.get("/sagas/{saga_id}")
+@app.get(
+    "/sagas/{saga_id}",
+    response_model=SagaTransactionResponse,
+    responses={
+        404: {"model": ErrorResponse, "description": "Saga not found"},
+    },
+    summary="Get saga transaction details",
+    description="Retrieve detailed information about a specific saga transaction including all steps and their current status.",
+    tags=["Saga Transactions"],
+)
 async def get_saga(saga_id: str):
     """Get saga transaction details"""
-    from src.database import saga_transactions
-
     if saga_id not in saga_transactions:
-        raise HTTPException(status_code=404, detail="Saga not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Saga not found"
+        )
 
-    return saga_transactions[saga_id]
+    return SagaTransactionResponse(**saga_transactions[saga_id].model_dump())
 
 
-@app.get("/inventory")
+@app.get(
+    "/inventory",
+    response_model=InventoryResponse,
+    summary="Get current inventory levels",
+    description="Retrieve the current inventory levels for all available products.",
+    tags=["System Info"],
+)
 async def get_inventory():
     """Get current inventory levels"""
-    return inventory_db
+    return InventoryResponse(inventory=inventory_db)
 
 
-@app.get("/balances")
+@app.get(
+    "/balances",
+    response_model=BalancesResponse,
+    summary="Get user balances",
+    description="Retrieve the current balance for all users in the system.",
+    tags=["System Info"],
+)
 async def get_balances():
     """Get user balances"""
-    return user_balances
+    return BalancesResponse(balances=user_balances)
 
 
-@app.get("/")
+@app.get(
+    "/",
+    response_model=RootResponse,
+    summary="Root endpoint",
+    description="Welcome endpoint for the Saga Pattern Demo API.",
+    tags=["System"],
+)
 async def root():
-    return {"message": "Saga Pattern Demo API"}
+    return RootResponse(message="Saga Pattern Demo API")
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Health check",
+    description="Check the health status of the API service.",
+    tags=["System"],
+)
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy"}
+    return HealthResponse(status="healthy")
 
 
 if __name__ == "__main__":
