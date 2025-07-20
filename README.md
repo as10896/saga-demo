@@ -46,7 +46,10 @@ The Saga pattern is a design pattern for managing distributed transactions acros
    uv run main.py
    ```
 
-The API will be available at `http://localhost:8000`
+3. **Access the application:**
+   - **Interactive UI**: http://localhost:8000
+   - **API Documentation**: http://localhost:8000/docs
+   - **ReDoc Documentation**: http://localhost:8000/redoc
 
 ## 📊 API Endpoints
 

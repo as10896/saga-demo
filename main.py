@@ -1,7 +1,10 @@
 import logging
 import uuid
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from src.database import inventory_db, orders_db, saga_transactions, user_balances
 from src.models import Order
@@ -54,6 +57,12 @@ app = FastAPI(
     description=description,
 )
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Initialize Jinja2 templates
+templates = Jinja2Templates(directory="templates")
+
 # Initialize orchestrator
 saga_orchestrator = SagaOrchestrator()
 
@@ -85,12 +94,14 @@ async def create_order(order_data: CreateOrderRequest):
     # Execute saga
     saga = await saga_orchestrator.execute_saga(order)
 
-    return CreateOrderResponse(
-        order_id=order.id,
-        saga_id=saga.id,
-        status=saga.status,
-        steps=[{"name": step.name, "status": step.status.value} for step in saga.steps],
-    )
+    return {
+        "order_id": order.id,
+        "saga_id": saga.id,
+        "status": saga.status,
+        "steps": [
+            {"name": step.name, "status": step.status.value} for step in saga.steps
+        ],
+    }
 
 
 @app.get(
@@ -110,7 +121,7 @@ async def get_order(order_id: str):
             status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
         )
 
-    return OrderResponse(**orders_db[order_id].model_dump())
+    return orders_db[order_id]
 
 
 @app.get(
@@ -130,7 +141,7 @@ async def get_saga(saga_id: str):
             status_code=status.HTTP_404_NOT_FOUND, detail="Saga not found"
         )
 
-    return SagaTransactionResponse(**saga_transactions[saga_id].model_dump())
+    return saga_transactions[saga_id]
 
 
 @app.get(
@@ -142,7 +153,7 @@ async def get_saga(saga_id: str):
 )
 async def get_inventory():
     """Get current inventory levels"""
-    return InventoryResponse(inventory=inventory_db)
+    return {"inventory": inventory_db}
 
 
 @app.get(
@@ -154,18 +165,30 @@ async def get_inventory():
 )
 async def get_balances():
     """Get user balances"""
-    return BalancesResponse(balances=user_balances)
+    return {"balances": user_balances}
 
 
 @app.get(
     "/",
-    response_model=RootResponse,
+    response_class=HTMLResponse,
     summary="Root endpoint",
+    description="Saga Pattern Demo UI",
+    tags=["System"],
+)
+async def root(request: Request):
+    """Serve the main HTML UI using Jinja2 template"""
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get(
+    "/api",
+    response_model=RootResponse,
+    summary="API root endpoint",
     description="Welcome endpoint for the Saga Pattern Demo API.",
     tags=["System"],
 )
-async def root():
-    return RootResponse(message="Saga Pattern Demo API")
+async def api_root():
+    return {"message": "Saga Pattern Demo API"}
 
 
 @app.get(
@@ -177,7 +200,7 @@ async def root():
 )
 async def health_check():
     """Health check endpoint"""
-    return HealthResponse(status="healthy")
+    return {"status": "healthy"}
 
 
 if __name__ == "__main__":

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saga Pattern Demo - Interactive UI</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Saga Pattern Demo</h1>
+            <p>Interactive demonstration of distributed transaction management in microservices</p>
+        </div>
+
+        <div class="educational-content">
+            <h2>📚 Understanding the Saga Pattern</h2>
+            <p>The Saga pattern is a design pattern for managing distributed transactions across multiple microservices. Instead of using a single database transaction, it breaks down a business transaction into a series of smaller, local transactions.</p>
+            
+            <h3>🎯 How it works:</h3>
+            <ul>
+                <li><strong>Step-by-step execution:</strong> Each step is a local transaction that can succeed or fail independently</li>
+                <li><strong>Automatic compensation:</strong> If any step fails, compensating actions are executed in reverse order</li>
+                <li><strong>Eventual consistency:</strong> The system maintains consistency across services without traditional ACID transactions</li>
+            </ul>
+
+            <h3>🛠️ This demo includes:</h3>
+            <ul>
+                <li><strong>Order Processing:</strong> Validate → Reserve Inventory → Process Payment → Ship</li>
+                <li><strong>Compensation Logic:</strong> Automatic rollback on failures</li>
+                <li><strong>Real-time Monitoring:</strong> Track each step's status</li>
+                <li><strong>System State:</strong> View inventory and user balances</li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <h2>📝 Create New Order</h2>
+                <form id="orderForm">
+                    <div class="form-group">
+                        <label for="userId">User ID:</label>
+                        <select id="userId" required>
+                            <option value="">Select a user</option>
+                            <option value="user_1">user_1 ($1000 balance)</option>
+                            <option value="user_2">user_2 ($500 balance)</option>
+                            <option value="user_3">user_3 ($200 balance)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="productId">Product ID:</label>
+                        <select id="productId" required>
+                            <option value="">Select a product</option>
+                            <option value="product_1">product_1 (100 units available)</option>
+                            <option value="product_2">product_2 (50 units available)</option>
+                            <option value="product_3">product_3 (25 units available)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="quantity">Quantity:</label>
+                        <input type="number" id="quantity" min="1" value="1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="amount">Amount ($):</label>
+                        <input type="number" id="amount" min="0.01" step="0.01" value="50.00" required>
+                    </div>
+                    
+                    <button type="submit" class="btn">🚀 Create Order & Execute Saga</button>
+                </form>
+
+                <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Executing saga transaction...</p>
+                </div>
+
+                <div id="orderResult"></div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Current System State</h2>
+                <div class="system-state">
+                    <div class="state-section">
+                        <h3>📦 Inventory Levels</h3>
+                        <div id="inventoryState">
+                            <div class="state-item">
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="state-section">
+                        <h3>💰 User Balances</h3>
+                        <div id="balanceState">
+                            <div class="state-item">
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="refreshSystemState()">🔄 Refresh State</button>
+            </div>
+        </div>
+
+        <div class="card test-scenarios">
+            <h2>🧪 Test Scenarios</h2>
+            <p>Try these pre-configured scenarios to see different saga behaviors:</p>
+            
+            <div class="scenario-buttons">
+                <div class="scenario-card">
+                    <h4>✅ Success Scenario</h4>
+                    <p>Valid order with sufficient funds and inventory</p>
+                    <button class="btn btn-success" onclick="runTestScenario('success')">Run Success Test</button>
+                </div>
+                
+                <div class="scenario-card">
+                    <h4>💳 Payment Failure</h4>
+                    <p>Order with insufficient funds - triggers compensation</p>
+                    <button class="btn btn-danger" onclick="runTestScenario('payment_failure')">Run Payment Failure Test</button>
+                </div>
+                
+                <div class="scenario-card">
+                    <h4>🚚 Shipping Failure</h4>
+                    <p>Order for user_3 - shipping fails, payment refunded</p>
+                    <button class="btn btn-warning" onclick="runTestScenario('shipping_failure')">Run Shipping Failure Test</button>
+                </div>
+                
+                <div class="scenario-card">
+                    <h4>📦 Inventory Failure</h4>
+                    <p>Order with insufficient inventory</p>
+                    <button class="btn btn-danger" onclick="runTestScenario('inventory_failure')">Run Inventory Failure Test</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card full-width">
+            <h2>📋 Recent Orders & Saga Transactions</h2>
+            <div id="ordersList">
+                <p>No orders created yet. Create an order to see saga transactions here.</p>
+            </div>
+        </div>
+
+        <div class="card full-width">
+            <h2>📝 Activity Logs</h2>
+            <div id="logs" class="logs">
+                <div class="log-entry info">System initialized. Ready to process orders.</div>
+            </div>
+            <button class="btn btn-secondary" onclick="clearLogs()">🗑️ Clear Logs</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/app.js') }}"></script>
+</body>
+</html> 
