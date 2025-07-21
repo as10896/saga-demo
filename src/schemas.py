@@ -101,11 +101,13 @@ class HealthResponse(BaseModel):
     )
 
 
-class RootResponse(BaseModel):
-    """Response schema for root endpoint"""
+class ResetResponse(BaseModel):
+    """Response schema for reset endpoint"""
 
     message: str = Field(
-        ..., description="Welcome message", example="Saga Pattern Demo API"
+        ...,
+        description="Mock DB reset message",
+        example="Mock database reset to initial state.",
     )
 
 

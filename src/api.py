@@ -6,7 +6,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from .database import inventory_db, orders_db, saga_transactions, user_balances
+from .database import (
+    inventory_db,
+    orders_db,
+    reset_mock_db,
+    saga_transactions,
+    user_balances,
+)
 from .models import Order
 from .orchestrator import SagaOrchestrator
 from .schemas import (
@@ -17,7 +23,7 @@ from .schemas import (
     HealthResponse,
     InventoryResponse,
     OrderResponse,
-    RootResponse,
+    ResetResponse,
     SagaTransactionResponse,
 )
 
@@ -168,6 +174,18 @@ async def get_balances():
     return {"balances": user_balances}
 
 
+@app.post(
+    "/reset",
+    response_model=ResetResponse,
+    summary="Reset mock database",
+    description="Reset all mock data (orders, inventory, balances, sagas) to initial state.",
+    tags=["System Info"],
+)
+async def reset_db() -> dict:
+    reset_mock_db()
+    return {"message": "Mock database reset to initial state."}
+
+
 @app.get(
     "/",
     response_class=HTMLResponse,
@@ -178,17 +196,6 @@ async def get_balances():
 async def root(request: Request):
     """Serve the main HTML UI using Jinja2 template"""
     return templates.TemplateResponse("index.html", {"request": request})
-
-
-@app.get(
-    "/api",
-    response_model=RootResponse,
-    summary="API root endpoint",
-    description="Welcome endpoint for the Saga Pattern Demo API.",
-    tags=["System"],
-)
-async def api_root():
-    return {"message": "Saga Pattern Demo API"}
 
 
 @app.get(

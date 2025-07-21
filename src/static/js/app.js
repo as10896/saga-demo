@@ -199,6 +199,24 @@ async function refreshSystemState() {
     }
 }
 
+// Reset demo data to initial state
+async function resetDemoData() {
+    addLog('info', 'Resetting demo data to initial state...');
+    try {
+        const response = await fetch(`${API_BASE}/reset`, { method: 'POST' });
+        const data = await response.json();
+        if (response.ok) {
+            addLog('success', data.message || 'Demo data reset.');
+            refreshSystemState();
+            document.getElementById('orderResult').innerHTML = '';
+        } else {
+            addLog('error', data.message || 'Failed to reset demo data.');
+        }
+    } catch (error) {
+        addLog('error', `Network error: ${error.message}`);
+    }
+}
+
 // Test scenarios
 function runTestScenario(scenario) {
     const scenarios = {

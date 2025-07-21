@@ -61,6 +61,7 @@ The Saga pattern is a design pattern for managing distributed transactions acros
 | `GET`  | `/inventory`         | Get current inventory levels        |
 | `GET`  | `/balances`          | Get user account balances           |
 | `GET`  | `/health`            | Health check endpoint               |
+| `POST` | `/reset`             | Reset all mock data to initial state|
 
 ### Interactive API Documentation
 
@@ -151,6 +152,16 @@ curl "http://localhost:8000/balances"
 # Get specific order details
 curl "http://localhost:8000/orders/{order_id}"
 ```
+
+### Resetting Demo Data
+
+You can reset all mock data (orders, inventory, balances, and saga transactions) to their initial state using the following endpoint:
+
+```bash
+curl -X POST "http://localhost:8000/reset"
+```
+
+**Expected Result:** All demo data is restored to its original state. This is useful for quickly resetting the environment during testing or demonstrations.
 
 ## 🔄 Saga Workflow
 
