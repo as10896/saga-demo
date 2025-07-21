@@ -7,10 +7,13 @@ theme:
   palette:
     scheme: default
     primary: black
+  icon:
+    edit: material/pencil
   features:
     - search.suggest
     - search.highlight
     - content.code.copy
+    - content.action.edit
 markdown_extensions:
   - toc:
       permalink: true
