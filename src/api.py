@@ -6,10 +6,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src.database import inventory_db, orders_db, saga_transactions, user_balances
-from src.models import Order
-from src.orchestrator import SagaOrchestrator
-from src.schemas import (
+from .database import inventory_db, orders_db, saga_transactions, user_balances
+from .models import Order
+from .orchestrator import SagaOrchestrator
+from .schemas import (
     BalancesResponse,
     CreateOrderRequest,
     CreateOrderResponse,
@@ -58,10 +58,10 @@ app = FastAPI(
 )
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 # Initialize Jinja2 templates
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="src/templates")
 
 # Initialize orchestrator
 saga_orchestrator = SagaOrchestrator()
