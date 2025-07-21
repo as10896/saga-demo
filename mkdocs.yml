@@ -22,4 +22,3 @@ markdown_extensions:
 nav:
   - Introduction: index.md
   - Saga Flowchart: flowchart.md
-  - Interactive UI Guide: ui.md

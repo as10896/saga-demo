@@ -45,9 +45,9 @@ The Saga pattern is a design pattern for managing distributed transactions acros
    ```
 
 3. **Access the application:**
-   - **Interactive UI**: [http://localhost:8000](http://localhost:8000)
-   - **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
-   - **ReDoc Documentation**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+    - **Interactive UI**: [http://localhost:8000](http://localhost:8000)
+    - **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
+    - **ReDoc Documentation**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ## 📊 API Endpoints
 
@@ -68,12 +68,8 @@ The Saga pattern is a design pattern for managing distributed transactions acros
 - **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
-## 📚 Additional Documentation
-
-For more detailed information about this project, please refer to:
-
-- **[Saga Flowchart](flowchart.md)**: Complete workflow diagrams and visual representations of the Saga pattern implementation
-- **[Interactive UI Guide](ui.md)**: Detailed guide for using the web interface, including test scenarios and troubleshooting
+## 📚 Saga Workflow Diagrams
+For complete workflow diagrams and visual representations of the Saga pattern implementation, please refer to the **[Saga Flowchart](flowchart.md)**.
 
 ## 🧪 Testing the Saga Pattern
 
