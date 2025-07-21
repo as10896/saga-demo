@@ -1,0 +1,25 @@
+site_name: Saga Pattern Demo with FastAPI
+repo_name: saga-demo
+repo_url: https://github.com/as10896/saga-demo
+edit_uri: edit/main/docs/
+theme:
+  name: material
+  palette:
+    scheme: default
+    primary: black
+  features:
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+nav:
+  - Introduction: index.md
+  - Saga Flowchart: flowchart.md
+  - Interactive UI Guide: ui.md
