@@ -56,6 +56,7 @@ The Saga pattern is a design pattern for managing distributed transactions acros
 | Method | Endpoint             | Description                         |
 | ------ | -------------------- | ----------------------------------- |
 | `POST` | `/orders`            | Create a new order and execute saga |
+| `GET`  | `/orders`            | List all orders (most recent first) |
 | `GET`  | `/orders/{order_id}` | Get order details                   |
 | `GET`  | `/sagas/{saga_id}`   | Get saga transaction details        |
 | `GET`  | `/inventory`         | Get current inventory levels        |

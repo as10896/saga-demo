@@ -5,6 +5,7 @@ let currentSagaId = null;
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     refreshSystemState();
+    refreshOrdersList();
     addLog('info', 'Saga Pattern Demo UI loaded successfully');
 });
 
@@ -53,6 +54,8 @@ async function createOrder(orderData) {
             
             // Refresh system state after a delay
             setTimeout(refreshSystemState, 2000);
+            // Refresh orders list after a delay
+            setTimeout(refreshOrdersList, 1000);
         } else {
             addLog('error', `Failed to create order: ${data.detail}`);
             displayError(data.detail);
@@ -199,6 +202,33 @@ async function refreshSystemState() {
     }
 }
 
+// Fetch and display recent orders
+async function refreshOrdersList() {
+    const ordersList = document.getElementById('ordersList');
+    ordersList.innerHTML = '<p>Loading...</p>';
+    try {
+        const response = await fetch(`${API_BASE}/orders`);
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+            const html = data.map(order => `
+                <div class="order-item">
+                    <div><strong>Order ID:</strong> ${order.id}</div>
+                    <div><strong>User:</strong> ${order.user_id}</div>
+                    <div><strong>Product:</strong> ${order.product_id}</div>
+                    <div><strong>Quantity:</strong> ${order.quantity}</div>
+                    <div><strong>Amount:</strong> $${order.amount.toFixed(2)}</div>
+                    <div><strong>Status:</strong> <span class="status-indicator status-${order.status.toLowerCase()}">${order.status}</span></div>
+                </div>
+            `).join('<hr/>');
+            ordersList.innerHTML = html;
+        } else {
+            ordersList.innerHTML = '<p>No orders created yet. Create an order to see saga transactions here.</p>';
+        }
+    } catch (error) {
+        ordersList.innerHTML = `<p class="error-message">Failed to load orders: ${error.message}</p>`;
+    }
+}
+
 // Reset demo data to initial state
 async function resetDemoData() {
     addLog('info', 'Resetting demo data to initial state...');
@@ -209,6 +239,7 @@ async function resetDemoData() {
             addLog('success', data.message || 'Demo data reset.');
             refreshSystemState();
             document.getElementById('orderResult').innerHTML = '';
+            refreshOrdersList();
         } else {
             addLog('error', data.message || 'Failed to reset demo data.');
         }
@@ -258,6 +289,8 @@ function runTestScenario(scenario) {
     
     // Submit the form
     document.getElementById('orderForm').dispatchEvent(new Event('submit'));
+    // Refresh orders list after a delay
+    setTimeout(refreshOrdersList, 1000);
 }
 
 // Utility functions

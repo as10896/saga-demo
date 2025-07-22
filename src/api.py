@@ -131,6 +131,19 @@ async def get_order(order_id: str):
 
 
 @app.get(
+    "/orders",
+    response_model=list[OrderResponse],
+    summary="List all orders",
+    description="Retrieve a list of all orders, most recent first.",
+    tags=["Orders"],
+)
+async def list_orders():
+    """List all orders, most recent first"""
+    orders = list(reversed(orders_db.values()))
+    return orders
+
+
+@app.get(
     "/sagas/{saga_id}",
     response_model=SagaTransactionResponse,
     responses={
