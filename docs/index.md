@@ -70,7 +70,7 @@ The Saga pattern is a design pattern for managing distributed transactions acros
 - **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ## 📚 Saga Workflow Diagrams
-For complete workflow diagrams and visual representations of the Saga pattern implementation, please refer to the **[Saga Flowchart](flowchart.md)**.
+For complete workflow diagrams and visual representations of the Saga pattern implementation, please refer to the **[Saga Workflow](workflow.md)**.
 
 ## 🧪 Testing the Saga Pattern
 

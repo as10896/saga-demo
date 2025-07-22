@@ -24,4 +24,4 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
   - Introduction: index.md
-  - Saga Flowchart: flowchart.md
+  - Saga Workflow: workflow.md

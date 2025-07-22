@@ -1,7 +1,5 @@
 # Saga Pattern Demo - Complete Workflow
 
-This flowchart illustrates the complete Saga Pattern implementation for distributed transaction management in the e-commerce order processing system.
-
 ## Main Saga Workflow
 
 ```mermaid
@@ -262,6 +260,67 @@ flowchart TD
     class A1,A2,A3,A4 test
 ```
 
+## Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Orchestrator
+    participant ValidationService as Validation
+    participant InventoryService as Inventory
+    participant PaymentService as Payment
+    participant ShippingService as Shipping
+
+    Note over Client,API: Client initiates order creation
+    Client->>API: POST /orders
+    Note right of API: Validate and forward order to orchestrator
+    API->>Orchestrator: execute_saga(order)
+    Note right of Orchestrator: Start saga transaction
+    Orchestrator->>Validation: validate_order()
+    Validation-->>Orchestrator: result (valid/invalid)
+    alt Validation Success
+        Note right of Orchestrator: Proceed to inventory reservation
+        Orchestrator->>Inventory: reserve_inventory()
+        Inventory-->>Orchestrator: result (ok/fail)
+        alt Inventory Success
+            Note right of Orchestrator: Proceed to payment
+            Orchestrator->>Payment: process_payment()
+            Payment-->>Orchestrator: result (ok/fail)
+            alt Payment Success
+                Note right of Orchestrator: Proceed to shipping
+                Orchestrator->>Shipping: ship_order()
+                Shipping-->>Orchestrator: result (ok/fail)
+                alt Shipping Success
+                    Note over Orchestrator,API: All steps succeeded <br> Saga COMPLETED
+                    Orchestrator->>API: saga COMPLETED
+                    API-->>Client: Order Success
+                else Shipping Failure
+                    Note over Orchestrator,Payment: Shipping failed <br> Start compensation
+                    Orchestrator->>Payment: compensate_payment()
+                    Note right of Orchestrator: Compensate inventory
+                    Orchestrator->>Inventory: compensate_inventory()
+                    Orchestrator->>API: saga FAILED
+                    API-->>Client: Order Failed (Shipping)
+                end
+            else Payment Failure
+                Note over Orchestrator,Inventory: Payment failed <br> Start compensation
+                Orchestrator->>Inventory: compensate_inventory()
+                Orchestrator->>API: saga FAILED
+                API-->>Client: Order Failed (Payment)
+            end
+        else Inventory Failure
+            Note right of Orchestrator: Inventory reservation failed
+            Orchestrator->>API: saga FAILED
+            API-->>Client: Order Failed (Inventory)
+        end
+    else Validation Failure
+        Note right of Orchestrator: Validation failed
+        Orchestrator->>API: saga FAILED
+        API-->>Client: Order Failed (Validation)
+    end
+``` 
+
 ## Key Features Highlighted
 
 - **Orchestrator-based Saga**: Centralized coordination of transaction steps
@@ -272,4 +331,4 @@ flowchart TD
 - **Mock Services**: Simulated inventory, payment, and shipping services
 - **Comprehensive Logging**: Detailed logging for debugging and monitoring
 
-The flowchart demonstrates how the Saga Pattern maintains data consistency across distributed services without using traditional ACID transactions, making it ideal for microservices architecture.
+These diagrams demonstrate how the Saga Pattern maintains data consistency across distributed services without using traditional ACID transactions, making it ideal for microservices architecture.
