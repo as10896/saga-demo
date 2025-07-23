@@ -25,3 +25,7 @@ markdown_extensions:
 nav:
   - Introduction: index.md
   - Saga Workflow: workflow.md
+extra:
+  analytics:
+    provider: google
+    property: G-MRE9MLGXWC
