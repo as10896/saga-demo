@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -75,6 +75,7 @@ saga_orchestrator = SagaOrchestrator()
 
 @app.post(
     "/orders",
+    response_class=ORJSONResponse,
     response_model=CreateOrderResponse,
     status_code=status.HTTP_201_CREATED,
     responses={
@@ -112,6 +113,7 @@ async def create_order(order_data: CreateOrderRequest):
 
 @app.get(
     "/orders/{order_id}",
+    response_class=ORJSONResponse,
     response_model=OrderResponse,
     responses={
         404: {"model": ErrorResponse, "description": "Order not found"},
@@ -132,6 +134,7 @@ async def get_order(order_id: str):
 
 @app.get(
     "/orders",
+    response_class=ORJSONResponse,
     response_model=list[OrderResponse],
     summary="List all orders",
     description="Retrieve a list of all orders, most recent first.",
@@ -145,6 +148,7 @@ async def list_orders():
 
 @app.get(
     "/sagas/{saga_id}",
+    response_class=ORJSONResponse,
     response_model=SagaTransactionResponse,
     responses={
         404: {"model": ErrorResponse, "description": "Saga not found"},
@@ -165,6 +169,7 @@ async def get_saga(saga_id: str):
 
 @app.get(
     "/inventory",
+    response_class=ORJSONResponse,
     response_model=InventoryResponse,
     summary="Get current inventory levels",
     description="Retrieve the current inventory levels for all available products.",
@@ -177,6 +182,7 @@ async def get_inventory():
 
 @app.get(
     "/balances",
+    response_class=ORJSONResponse,
     response_model=BalancesResponse,
     summary="Get user balances",
     description="Retrieve the current balance for all users in the system.",
@@ -189,12 +195,13 @@ async def get_balances():
 
 @app.post(
     "/reset",
+    response_class=ORJSONResponse,
     response_model=ResetResponse,
     summary="Reset mock database",
     description="Reset all mock data (orders, inventory, balances, sagas) to initial state.",
     tags=["System Info"],
 )
-async def reset_db() -> dict:
+async def reset_db():
     reset_mock_db()
     return {"message": "Mock database reset to initial state."}
 
@@ -213,6 +220,7 @@ async def root(request: Request):
 
 @app.get(
     "/health",
+    response_class=ORJSONResponse,
     response_model=HealthResponse,
     summary="Health check",
     description="Check the health status of the API service.",
