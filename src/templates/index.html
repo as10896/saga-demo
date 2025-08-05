@@ -41,9 +41,6 @@
                         <label for="userId">User ID:</label>
                         <select id="userId" required>
                             <option value="">Select a user</option>
-                            <option value="user_1">user_1 ($1000 balance)</option>
-                            <option value="user_2">user_2 ($500 balance)</option>
-                            <option value="user_3">user_3 ($200 balance)</option>
                         </select>
                     </div>
                     
@@ -51,9 +48,6 @@
                         <label for="productId">Product ID:</label>
                         <select id="productId" required>
                             <option value="">Select a product</option>
-                            <option value="product_1">product_1 (100 units available)</option>
-                            <option value="product_2">product_2 (50 units available)</option>
-                            <option value="product_3">product_3 (25 units available)</option>
                         </select>
                     </div>
                     
@@ -115,6 +109,12 @@
                     <p>Valid order with sufficient funds and inventory</p>
                     <button class="btn btn-success" onclick="runTestScenario('success')">Run Success Test</button>
                 </div>
+
+                <div class="scenario-card">
+                    <h4>📦 Inventory Failure</h4>
+                    <p>Order with excessive quantity - triggers inventory compensation</p>
+                    <button class="btn btn-danger" onclick="runTestScenario('inventory_failure')">Run Inventory Failure Test</button>
+                </div>
                 
                 <div class="scenario-card">
                     <h4>💳 Payment Failure</h4>
@@ -126,12 +126,6 @@
                     <h4>🚚 Shipping Failure</h4>
                     <p>Order for user_3 - shipping fails, payment refunded</p>
                     <button class="btn btn-warning" onclick="runTestScenario('shipping_failure')">Run Shipping Failure Test</button>
-                </div>
-                
-                <div class="scenario-card">
-                    <h4>📦 Inventory Failure</h4>
-                    <p>Order with insufficient inventory</p>
-                    <button class="btn btn-danger" onclick="runTestScenario('inventory_failure')">Run Inventory Failure Test</button>
                 </div>
             </div>
         </div>

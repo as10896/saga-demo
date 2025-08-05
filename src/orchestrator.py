@@ -5,7 +5,6 @@ Saga orchestrator implementation
 import logging
 import uuid
 
-from .database import orders_db, saga_transactions
 from .models import Order, OrderStatus, SagaStep, SagaTransaction, StepStatus
 from .services import (
     InventoryService,
@@ -13,6 +12,7 @@ from .services import (
     ShippingService,
     ValidationService,
 )
+from .session_manager import session_manager
 
 logger = logging.getLogger(__name__)
 
@@ -46,16 +46,21 @@ class SagaOrchestrator:
             },
         ]
 
-    async def execute_saga(self, order: Order) -> SagaTransaction:
+    async def execute_saga(self, order: Order, session_id: str) -> SagaTransaction:
         """
         Execute a saga transaction for the given order
 
         Args:
             order: The order to process
+            session_id: Session ID for database isolation
 
         Returns:
             SagaTransaction: The completed saga transaction with status and steps
         """
+        session = session_manager.get_session(session_id)
+        orders_db = session.orders_db
+        saga_transactions = session.saga_transactions
+
         saga_id = str(uuid.uuid4())
         saga = SagaTransaction(
             id=saga_id,
@@ -73,7 +78,7 @@ class SagaOrchestrator:
                 logger.info(f"Executing step: {step.name} for order {order.id}")
 
                 try:
-                    await step_config["action"](order)
+                    await step_config["action"](order, session_id)
                     step.status = StepStatus.COMPLETED
                     logger.info(f"Step {step.name} completed successfully")
                 except Exception as e:
@@ -82,7 +87,7 @@ class SagaOrchestrator:
                     logger.error(f"Step {step.name} failed: {str(e)}")
 
                     # Start compensation
-                    await self._compensate_saga(saga, i)
+                    await self._compensate_saga(saga, i, session_id)
                     saga.status = OrderStatus.FAILED
                     order.status = OrderStatus.FAILED
                     orders_db[order.id] = order
@@ -103,7 +108,7 @@ class SagaOrchestrator:
         return saga
 
     async def _compensate_saga(
-        self, saga: SagaTransaction, failed_step_index: int
+        self, saga: SagaTransaction, failed_step_index: int, session_id: str
     ) -> None:
         """
         Execute compensation actions for completed steps in reverse order
@@ -111,7 +116,11 @@ class SagaOrchestrator:
         Args:
             saga: The saga transaction to compensate
             failed_step_index: Index of the step that failed
+            session_id: Session ID for database isolation
         """
+        session = session_manager.get_session(session_id)
+        orders_db = session.orders_db
+
         logger.info(f"Starting compensation for saga {saga.id}")
         saga.status = OrderStatus.COMPENSATING
 
@@ -121,7 +130,9 @@ class SagaOrchestrator:
             if step.status == StepStatus.COMPLETED:
                 step_config = self.steps[i]
                 try:
-                    await step_config["compensate"](orders_db[saga.order_id])
+                    await step_config["compensate"](
+                        orders_db[saga.order_id], session_id
+                    )
                     step.status = StepStatus.COMPENSATED
                     logger.info(f"Compensated step: {step.name}")
                 except Exception as e:
