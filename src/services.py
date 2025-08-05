@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from .models import Order
-from .session_manager import session_manager
+from .session_manager import UserSession
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +15,9 @@ class ValidationService:
     """Handles order validation logic"""
 
     @staticmethod
-    async def validate_order(order: Order, session_id: str) -> None:
+    async def validate_order(order: Order, session: UserSession) -> None:
         """Validate order details"""
-        user_balances = session_manager.get_session(session_id).user_balances
+        user_balances = session.user_balances
 
         if order.quantity <= 0:
             raise Exception("Invalid quantity")
@@ -31,7 +31,7 @@ class ValidationService:
         logger.info(f"Order {order.id} validated successfully")
 
     @staticmethod
-    async def compensate_validation(order: Order, session_id: str) -> None:
+    async def compensate_validation(order: Order, session: UserSession) -> None:
         """No compensation needed for validation"""
         logger.info(f"No compensation needed for validation of order {order.id}")
 
@@ -40,9 +40,9 @@ class InventoryService:
     """Handles inventory management operations"""
 
     @staticmethod
-    async def reserve_inventory(order: Order, session_id: str) -> None:
+    async def reserve_inventory(order: Order, session: UserSession) -> None:
         """Reserve inventory for the order"""
-        inventory_db = session_manager.get_session(session_id).inventory_db
+        inventory_db = session.inventory_db
 
         if order.product_id not in inventory_db:
             raise Exception("Product not found")
@@ -55,9 +55,9 @@ class InventoryService:
         logger.info(f"Reserved {order.quantity} units of {order.product_id}")
 
     @staticmethod
-    async def release_inventory(order: Order, session_id: str) -> None:
+    async def release_inventory(order: Order, session: UserSession) -> None:
         """Release reserved inventory"""
-        inventory_db = session_manager.get_session(session_id).inventory_db
+        inventory_db = session.inventory_db
 
         if order.product_id in inventory_db:
             inventory_db[order.product_id] += order.quantity
@@ -68,9 +68,9 @@ class PaymentService:
     """Handles payment processing operations"""
 
     @staticmethod
-    async def process_payment(order: Order, session_id: str) -> None:
+    async def process_payment(order: Order, session: UserSession) -> None:
         """Process payment for the order"""
-        user_balances = session_manager.get_session(session_id).user_balances
+        user_balances = session.user_balances
 
         if user_balances[order.user_id] < order.amount:
             raise Exception("Insufficient funds")
@@ -80,9 +80,9 @@ class PaymentService:
         logger.info(f"Processed payment of ${order.amount} for user {order.user_id}")
 
     @staticmethod
-    async def refund_payment(order: Order, session_id: str) -> None:
+    async def refund_payment(order: Order, session: UserSession) -> None:
         """Refund payment"""
-        user_balances = session_manager.get_session(session_id).user_balances
+        user_balances = session.user_balances
 
         user_balances[order.user_id] += order.amount
         logger.info(f"Refunded ${order.amount} to user {order.user_id}")
@@ -92,7 +92,7 @@ class ShippingService:
     """Handles shipping operations"""
 
     @staticmethod
-    async def ship_order(order: Order, session_id: str) -> None:
+    async def ship_order(order: Order, session: UserSession) -> None:
         """Ship the order"""
         # Simulate potential shipping failure
         if order.user_id == "user_3":  # Simulate shipping failure for user_3
@@ -102,6 +102,6 @@ class ShippingService:
         logger.info(f"Order {order.id} shipped successfully")
 
     @staticmethod
-    async def cancel_shipment(order: Order, session_id: str) -> None:
+    async def cancel_shipment(order: Order, session: UserSession) -> None:
         """Cancel shipment"""
         logger.info(f"Shipment cancelled for order {order.id}")

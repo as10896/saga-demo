@@ -1,16 +1,25 @@
+"""
+Main FastAPI application with Saga Pattern demonstration endpoints.
+
+This module contains the core API endpoints for demonstrating the Saga pattern
+in a clean, easy-to-understand way. All infrastructure code has been moved
+to separate modules for better organization.
+"""
+
 import logging
 import uuid
-from typing import Annotated
+from contextlib import asynccontextmanager
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import schemas
+from .dependencies import SessionDep, get_user_session
 from .models import Order
 from .orchestrator import SagaOrchestrator
-from .session_manager import UserSession, session_manager
+from .redis_config import get_session_manager, redis_lifespan
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +39,7 @@ including validation, inventory management, payment processing, and shipping.
 * **User Balances**: Monitor user account balances
 * **Compensation Logic**: Automatic rollback on failures
 * **Session Isolation**: Each user has isolated database state
+* **Redis Persistence**: Session data persists across server restarts
 
 ## How it works
 
@@ -41,35 +51,40 @@ including validation, inventory management, payment processing, and shipping.
     - Ship order
 3. If any step fails, compensation actions are executed in reverse order
 4. Monitor progress using the `/sagas/{saga_id}` endpoint
-5. Each user session maintains isolated database state
+5. Each user session maintains isolated database state stored in Redis
 """
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan manager.
+
+    Handles Redis connection and cleanup using the redis_config module.
+    """
+    async with redis_lifespan():
+        yield
+
+
+# Initialize FastAPI app
 app = FastAPI(
     title="Saga Pattern Demo API",
     version="1.0.0",
     description=description,
+    lifespan=lifespan,
 )
 
-# Mount static files
+# Mount static files and templates
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
-
-# Initialize Jinja2 templates
 templates = Jinja2Templates(directory="src/templates")
 
-# Initialize orchestrator
+# Initialize saga orchestrator
 saga_orchestrator = SagaOrchestrator()
 
 
-def get_session(
-    response: Response,
-    session_id: Annotated[str | None, Cookie()] = None,
-) -> UserSession:
-    """Extracts the session ID from the cookie and gets or creates a session if not specified or if the session has expired."""
-    session = session_manager.get_or_create_session(session_id)
-    response.set_cookie(
-        key="session_id", value=session.session_id, httponly=True, max_age=3600
-    )
-    return session
+# ============================================================================
+# API ENDPOINTS
+# ============================================================================
 
 
 @app.post(
@@ -78,16 +93,15 @@ def get_session(
     response_model=schemas.CreateOrderResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new order",
-    description="Create a new order and execute the saga pattern transaction to process it through all required steps including validation, inventory reservation, payment processing, and shipping.",
+    description="Create a new order and execute the saga pattern transaction.",
     tags=["Orders"],
 )
 async def create_order(
     order_data: schemas.CreateOrderRequest,
-    session: Annotated[UserSession, Depends(get_session)],
+    session: SessionDep,
 ):
-    """Create a new order and execute saga"""
-    orders_db = session.orders_db
-
+    """Create a new order and execute saga transaction."""
+    # Create the order
     order = Order(
         id=str(uuid.uuid4()),
         user_id=order_data.user_id,
@@ -96,10 +110,14 @@ async def create_order(
         amount=order_data.amount,
     )
 
-    orders_db[order.id] = order
+    # Add order to session
+    session.orders_db[order.id] = order
 
-    # Execute saga
-    saga = await saga_orchestrator.execute_saga(order, session.session_id)
+    # Execute saga with session manager
+    session_manager = get_session_manager()
+    saga = await saga_orchestrator.execute_saga(
+        order, session.session_id, session_manager
+    )
 
     return {
         "order_id": order.id,
@@ -115,26 +133,19 @@ async def create_order(
     "/orders/{order_id}",
     response_class=ORJSONResponse,
     response_model=schemas.OrderResponse,
-    responses={
-        404: {"model": schemas.ErrorResponse, "description": "Order not found"},
-    },
+    responses={404: {"model": schemas.ErrorResponse, "description": "Order not found"}},
     summary="Get order details",
     description="Retrieve detailed information about a specific order by its ID.",
     tags=["Orders"],
 )
-async def get_order(
-    order_id: str,
-    session: Annotated[UserSession, Depends(get_session)],
-):
-    """Get order details"""
-    orders_db = session.orders_db
-
-    if order_id not in orders_db:
+async def get_order(order_id: str, session: SessionDep):
+    """Get order details by ID."""
+    if order_id not in session.orders_db:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
         )
 
-    return orders_db[order_id]
+    return session.orders_db[order_id]
 
 
 @app.get(
@@ -145,11 +156,9 @@ async def get_order(
     description="Retrieve a list of all orders, most recent first.",
     tags=["Orders"],
 )
-async def list_orders(session: Annotated[UserSession, Depends(get_session)]):
-    """List all orders, most recent first"""
-    orders_db = session.orders_db
-
-    orders = list(reversed(orders_db.values()))
+async def list_orders(session: SessionDep):
+    """List all orders, most recent first."""
+    orders = list(reversed(session.orders_db.values()))
     return orders
 
 
@@ -157,23 +166,19 @@ async def list_orders(session: Annotated[UserSession, Depends(get_session)]):
     "/sagas/{saga_id}",
     response_class=ORJSONResponse,
     response_model=schemas.SagaTransactionResponse,
-    responses={
-        404: {"model": schemas.ErrorResponse, "description": "Saga not found"},
-    },
+    responses={404: {"model": schemas.ErrorResponse, "description": "Saga not found"}},
     summary="Get saga transaction details",
-    description="Retrieve detailed information about a specific saga transaction including all steps and their current status.",
+    description="Retrieve detailed information about a specific saga transaction.",
     tags=["Saga Transactions"],
 )
-async def get_saga(saga_id: str, session: Annotated[UserSession, Depends(get_session)]):
-    """Get saga transaction details"""
-    saga_transactions = session.saga_transactions
-
-    if saga_id not in saga_transactions:
+async def get_saga(saga_id: str, session: SessionDep):
+    """Get saga transaction details by ID."""
+    if saga_id not in session.saga_transactions:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Saga not found"
         )
 
-    return saga_transactions[saga_id]
+    return session.saga_transactions[saga_id]
 
 
 @app.get(
@@ -184,11 +189,9 @@ async def get_saga(saga_id: str, session: Annotated[UserSession, Depends(get_ses
     description="Retrieve the current inventory levels for all available products.",
     tags=["Session Info"],
 )
-async def get_inventory(session: Annotated[UserSession, Depends(get_session)]):
-    """Get current inventory levels"""
-    inventory_db = session.inventory_db
-
-    return {"inventory": inventory_db}
+async def get_inventory(session: SessionDep):
+    """Get current inventory levels."""
+    return {"inventory": session.inventory_db}
 
 
 @app.get(
@@ -199,11 +202,9 @@ async def get_inventory(session: Annotated[UserSession, Depends(get_session)]):
     description="Retrieve the current balance for all users in the system.",
     tags=["Session Info"],
 )
-async def get_balances(session: Annotated[UserSession, Depends(get_session)]):
-    """Get user balances"""
-    user_balances = session.user_balances
-
-    return {"balances": user_balances}
+async def get_balances(session: SessionDep):
+    """Get user balances."""
+    return {"balances": session.user_balances}
 
 
 @app.post(
@@ -214,8 +215,10 @@ async def get_balances(session: Annotated[UserSession, Depends(get_session)]):
     description="Reset all mock data (orders, inventory, balances, sagas) to initial state.",
     tags=["Session Info"],
 )
-async def reset_db(session: Annotated[UserSession, Depends(get_session)]):
-    session_manager.reset_session_db(session.session_id)
+async def reset_db(session: SessionDep):
+    """Reset mock database to initial state."""
+    session_manager = get_session_manager()
+    await session_manager.reset_session_db(session.session_id)
     return {"message": "Mock database reset to initial state."}
 
 
@@ -223,10 +226,10 @@ async def reset_db(session: Annotated[UserSession, Depends(get_session)]):
     "/",
     response_class=HTMLResponse,
     summary="Saga Pattern Demo UI",
-    description="Saga Pattern Demo UI",
-    tags=["Session Info"],
+    description="Interactive web interface for the Saga Pattern demonstration.",
+    tags=["UI"],
 )
-async def root(request: Request, session: Annotated[UserSession, Depends(get_session)]):
+async def root(request: Request, session: SessionDep):
     """Serve the main HTML UI using Jinja2 template"""
     response = templates.TemplateResponse(request=request, name="index.html")
 
@@ -253,5 +256,5 @@ async def root(request: Request, session: Annotated[UserSession, Depends(get_ses
     tags=["System"],
 )
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint."""
     return {"status": "healthy"}

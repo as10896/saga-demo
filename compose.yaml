@@ -2,5 +2,10 @@ services:
   app:
     image: saga-demo
     build: .
+    environment:
+      REDIS_URL: redis://redis:6379
     ports:
       - 127.0.0.1:${PORT:-8000}:8000
+
+  redis:
+    image: redis

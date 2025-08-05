@@ -57,21 +57,27 @@ flowchart TD
 
     %% Compensation Steps
     EE --> FF{Previous Steps Completed?}
-    FF -->|Yes| GG[Step 3: Refund Payment]
-    FF -->|No| HH[Step 2: Release Inventory]
-    FF -->|No| II[Step 1: No Compensation Needed]
+    FF -->|Ship Completed| GG[Step 4: Cancel Shipment]
+    FF -->|Payment Completed| HH[Step 3: Refund Payment]
+    FF -->|Inventory Completed| II[Step 2: Release Inventory]
+    FF -->|Validation Completed| JJ[Step 1: Mark Compensated]
 
-    GG --> JJ[Add Amount Back to Balance]
-    JJ --> KK[Mark Step: COMPENSATED]
-    KK --> HH
+    GG --> KK[Log Cancellation]
+    KK --> LL[Mark Step: COMPENSATED]
+    LL --> HH
 
-    HH --> LL[Add Quantity Back to Inventory]
-    LL --> MM[Mark Step: COMPENSATED]
-    MM --> II
+    HH --> MM[Add Amount Back to Balance]
+    MM --> NN[Mark Step: COMPENSATED]
+    NN --> II
 
-    II --> NN[Set Saga Status: FAILED]
-    NN --> OO[Set Order Status: FAILED]
-    OO --> PP[Return Error Response]
+    II --> OO[Add Quantity Back to Inventory]
+    OO --> PP[Mark Step: COMPENSATED]
+    PP --> JJ
+
+    JJ --> QQ[Mark Step: COMPENSATED]
+    QQ --> RR[Set Saga Status: FAILED]
+    RR --> SS[Set Order Status: FAILED]
+    SS --> TT[Return Error Response]
 
     %% Styling
     classDef success fill:#d4edda,stroke:#155724,stroke-width:2px
@@ -81,10 +87,10 @@ flowchart TD
     classDef compensation fill:#f8d7da,stroke:#721c24,stroke-width:2px
 
     class Z,AA,BB success
-    class K,P,U,Y,NN,OO,PP failure
+    class K,P,U,Y,RR,SS,TT failure
     class B,C,D,E,F,G,H,J,L,N,O,Q,S,T,V,X process
     class I,M,R,W,FF decision
-    class CC,DD,EE,GG,JJ,KK,HH,LL,MM,II compensation
+    class CC,DD,EE,GG,HH,II,JJ,KK,LL,MM,NN,OO,PP,QQ compensation
 ```
 
 ## Detailed Service Interactions
@@ -114,7 +120,7 @@ flowchart TD
     D4 --> D5[Simulate Async Processing]
 
     %% Compensation Services
-    E[ValidationService.compensate] --> E1[No Action Required]
+    E[ValidationService.compensate] --> E1[Mark as Compensated - No Action]
 
     F[InventoryService.compensate] --> F1[Add Quantity Back]
     F1 --> F2[Update Inventory DB]
@@ -143,7 +149,6 @@ flowchart LR
     Client --> GET_SAGA["GET /sagas/{id}"]
     Client --> GET_INV[GET /inventory]
     Client --> GET_BAL[GET /balances]
-    Client --> HEALTH[GET /health]
 
     %% API Processing
     POST --> CreateOrder[Create Order]
@@ -151,7 +156,6 @@ flowchart LR
     GET_SAGA --> FetchSaga[Fetch Saga from DB]
     GET_INV --> FetchInventory[Fetch Inventory DB]
     GET_BAL --> FetchBalances[Fetch User Balances]
-    HEALTH --> HealthCheck[Health Check]
 
     %% Response Flow
     CreateOrder --> Response[Return Order + Saga ID]
@@ -159,7 +163,6 @@ flowchart LR
     FetchSaga --> SagaResponse[Return Saga Status]
     FetchInventory --> InventoryResponse[Return Inventory Levels]
     FetchBalances --> BalanceResponse[Return User Balances]
-    HealthCheck --> HealthResponse[Return Health Status]
 
     %% Database Layer
     CreateOrder --> OrdersDB[(Orders Database)]
@@ -175,9 +178,9 @@ flowchart LR
     classDef response fill:#e2e3e5,stroke:#383d41,stroke-width:2px
 
     class Client client
-    class POST,GET_ORDER,GET_SAGA,GET_INV,GET_BAL,HEALTH api
+    class POST,GET_ORDER,GET_SAGA,GET_INV,GET_BAL,RESET,HEALTH api
     class OrdersDB,SagaDB,InventoryDB,UserDB db
-    class Response,OrderResponse,SagaResponse,InventoryResponse,BalanceResponse,HealthResponse response
+    class Response,OrderResponse,SagaResponse,InventoryResponse,BalanceResponse,ResetResponse,HealthResponse response
 ```
 
 ## Error Handling and Status Transitions
@@ -231,24 +234,26 @@ flowchart TD
     B1 --> C1[All Steps Pass]
     C1 --> D1[Order: COMPLETED]
 
-    %% Test Scenario 2: Payment Failure
-    A2[Test 2: Insufficient Funds] --> B2[user_3, product_1, qty=1, $500]
-    B2 --> C2[Payment Step Fails]
-    C2 --> D2[Compensation: Release Inventory]
+    %% Test Scenario 2: Inventory Failure
+    A2[Test 2: Insufficient Inventory] --> B2[user_1, product_1, qty=200]
+    B2 --> C2[Inventory Step Fails]
+    C2 --> D2[Compensation: Validate Order]
     D2 --> E2[Order: FAILED]
 
-    %% Test Scenario 3: Shipping Failure
-    A3[Test 3: Shipping Failure] --> B3[user_3, product_1, qty=1, $50]
-    B3 --> C3[Shipping Step Fails]
-    C3 --> D3[Compensation: Refund Payment]
-    D3 --> E3[Compensation: Release Inventory]
+    %% Test Scenario 3: Payment Failure
+    A3[Test 3: Insufficient Funds] --> B3[user_3, product_1, qty=1, $500]
+    B3 --> C3[Payment Step Fails]
+    C3 --> D3[Compensation: Release Inventory]
+    D3 --> E3[Compensation: Validate Order]
     E3 --> F3[Order: FAILED]
 
-    %% Test Scenario 4: Inventory Failure
-    A4[Test 4: Insufficient Inventory] --> B4[user_1, product_1, qty=200]
-    B4 --> C4[Inventory Step Fails]
-    C4 --> D4[No Compensation Needed]
-    D4 --> E4[Order: FAILED]
+    %% Test Scenario 4: Shipping Failure
+    A4[Test 4: Shipping Failure] --> B4[user_3, product_1, qty=1, $50]
+    B4 --> C4[Shipping Step Fails]
+    C4 --> D4[Compensation: Refund Payment]
+    D4 --> E4[Compensation: Release Inventory]
+    E4 --> F4[Compensation: Validate Order]
+    F4 --> G4[Order: FAILED]
 
     %% Styling
     classDef success fill:#d4edda,stroke:#155724,stroke-width:2px
@@ -256,9 +261,11 @@ flowchart TD
     classDef test fill:#e2e3e5,stroke:#383d41,stroke-width:2px
 
     class D1 success
-    class E2,F3,E4 failure
+    class E2,F3,G4 failure
     class A1,A2,A3,A4 test
 ```
+
+* **Note:** To simplify the demo, we simulate the Shipping Failure by hardcoding the logic: if the order is placed by `user_3`, and both the product inventory and the user’s balance are sufficient, we intentionally force an error at the final shipping step.
 
 ## Sequence Diagram
 
@@ -300,17 +307,23 @@ sequenceDiagram
                     Orchestrator->>Payment: compensate_payment()
                     Note right of Orchestrator: Compensate inventory
                     Orchestrator->>Inventory: compensate_inventory()
+                    Note right of Orchestrator: Compensate validation
+                    Orchestrator->>Validation: compensate_validation()
                     Orchestrator->>API: saga FAILED
                     API-->>Client: Order Failed (Shipping)
                 end
             else Payment Failure
                 Note over Orchestrator,Inventory: Payment failed <br> Start compensation
                 Orchestrator->>Inventory: compensate_inventory()
+                Note right of Orchestrator: Compensate validation
+                Orchestrator->>Validation: compensate_validation()
                 Orchestrator->>API: saga FAILED
                 API-->>Client: Order Failed (Payment)
             end
         else Inventory Failure
             Note right of Orchestrator: Inventory reservation failed
+            Note right of Orchestrator: Compensate validation
+            Orchestrator->>Validation: compensate_validation()
             Orchestrator->>API: saga FAILED
             API-->>Client: Order Failed (Inventory)
         end
