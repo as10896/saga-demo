@@ -78,10 +78,6 @@ saga_orchestrator = SagaOrchestrator()
     response_class=ORJSONResponse,
     response_model=CreateOrderResponse,
     status_code=status.HTTP_201_CREATED,
-    responses={
-        400: {"model": ErrorResponse, "description": "Invalid order data"},
-        422: {"model": ErrorResponse, "description": "Validation error"},
-    },
     summary="Create a new order",
     description="Create a new order and execute the saga pattern transaction to process it through all required steps including validation, inventory reservation, payment processing, and shipping.",
     tags=["Orders"],

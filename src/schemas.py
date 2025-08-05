@@ -7,6 +7,16 @@ from pydantic import BaseModel, Field
 from .models import OrderStatus, StepStatus
 
 
+class SagaStepResponse(BaseModel):
+    """Response schema for saga step details"""
+
+    name: str = Field(..., description="Name of the saga step")
+    status: StepStatus = Field(..., description="Current status of the step")
+    error_message: str | None = Field(
+        None, description="Error message if the step failed"
+    )
+
+
 # Request Schemas
 class CreateOrderRequest(BaseModel):
     """Request schema for creating a new order"""
@@ -40,7 +50,7 @@ class CreateOrderResponse(BaseModel):
     status: OrderStatus = Field(
         ..., description="Current status of the saga transaction"
     )
-    steps: list[dict[str, str]] = Field(
+    steps: list[SagaStepResponse] = Field(
         ..., description="List of saga steps with their status"
     )
 
@@ -54,16 +64,6 @@ class OrderResponse(BaseModel):
     quantity: int = Field(..., description="Quantity of the product")
     amount: float = Field(..., description="Total amount for the order")
     status: OrderStatus = Field(..., description="Current status of the order")
-
-
-class SagaStepResponse(BaseModel):
-    """Response schema for saga step details"""
-
-    name: str = Field(..., description="Name of the saga step")
-    status: StepStatus = Field(..., description="Current status of the step")
-    error_message: str | None = Field(
-        None, description="Error message if the step failed"
-    )
 
 
 class SagaTransactionResponse(BaseModel):
@@ -116,9 +116,3 @@ class ErrorResponse(BaseModel):
     """Standard error response schema"""
 
     detail: str = Field(..., description="Error message describing what went wrong")
-
-
-class ValidationErrorResponse(BaseModel):
-    """Validation error response schema"""
-
-    detail: list[dict[str, str]] = Field(..., description="List of validation errors")
