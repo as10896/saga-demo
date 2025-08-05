@@ -274,10 +274,10 @@ sequenceDiagram
     participant Client
     participant API
     participant Orchestrator
-    participant ValidationService as Validation
-    participant InventoryService as Inventory
-    participant PaymentService as Payment
-    participant ShippingService as Shipping
+    participant Validation
+    participant Inventory
+    participant Payment
+    participant Shipping
 
     Note over Client,API: Client initiates order creation
     Client->>API: POST /orders
