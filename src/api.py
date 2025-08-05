@@ -208,7 +208,7 @@ async def reset_db() -> dict:
 )
 async def root(request: Request):
     """Serve the main HTML UI using Jinja2 template"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 
 @app.get(
