@@ -197,6 +197,9 @@ async function refreshSystemState() {
         
         document.getElementById('balanceState').innerHTML = balanceHtml;
         
+        // Update form options with current state
+        updateFormOptions(inventoryData.inventory, balanceData.balances);
+        
     } catch (error) {
         addLog('error', `Failed to refresh system state: ${error.message}`);
     }
@@ -249,48 +252,62 @@ async function resetDemoData() {
 }
 
 // Test scenarios
-function runTestScenario(scenario) {
-    const scenarios = {
-        success: {
-            user_id: 'user_1',
-            product_id: 'product_1',
-            quantity: 2,
-            amount: 100.0
-        },
-        payment_failure: {
-            user_id: 'user_3',
-            product_id: 'product_1',
-            quantity: 1,
-            amount: 500.0
-        },
-        shipping_failure: {
-            user_id: 'user_3',
-            product_id: 'product_1',
-            quantity: 1,
-            amount: 50.0
-        },
-        inventory_failure: {
-            user_id: 'user_1',
-            product_id: 'product_1',
-            quantity: 200,
-            amount: 10000.0
-        }
-    };
+async function runTestScenario(scenario) {
+    // Get current system state to use real values
+    try {
+        const [inventoryResponse, balanceResponse] = await Promise.all([
+            fetch(`${API_BASE}/inventory`),
+            fetch(`${API_BASE}/balances`)
+        ]);
+        
+        const inventoryData = await inventoryResponse.json();
+        const balanceData = await balanceResponse.json();
+        
+        const scenarios = {
+            success: {
+                user_id: 'user_1',
+                product_id: 'product_1',
+                quantity: 2,
+                amount: 100.0
+            },
+            payment_failure: {
+                user_id: 'user_3',
+                product_id: 'product_1',
+                quantity: 1,
+                amount: balanceData.balances['user_3'] + 100 // Ensure payment failure
+            },
+            shipping_failure: {
+                user_id: 'user_3',
+                product_id: 'product_1',
+                quantity: 1,
+                amount: 50.0
+            },
+            inventory_failure: {
+                user_id: 'user_1',
+                product_id: 'product_1',
+                quantity: inventoryData.inventory['product_1'] + 10, // Ensure inventory failure
+                amount: 10000.0
+            }
+        };
 
-    const data = scenarios[scenario];
-    
-    // Fill the form
-    document.getElementById('userId').value = data.user_id;
-    document.getElementById('productId').value = data.product_id;
-    document.getElementById('quantity').value = data.quantity;
-    document.getElementById('amount').value = data.amount;
-    
-    addLog('info', `Running ${scenario} test scenario`);
-    
-    // Submit the form
-    document.getElementById('orderForm').dispatchEvent(new Event('submit'));
-    // Refresh orders list after a delay
-    setTimeout(refreshOrdersList, 1000);
+        const data = scenarios[scenario];
+        
+        // Fill the form
+        document.getElementById('userId').value = data.user_id;
+        document.getElementById('productId').value = data.product_id;
+        document.getElementById('quantity').value = data.quantity;
+        document.getElementById('amount').value = data.amount;
+        
+        addLog('info', `Running ${scenario} test scenario`);
+        
+        // Submit the form
+        document.getElementById('orderForm').dispatchEvent(new Event('submit'));
+        // Refresh orders list after a delay
+        setTimeout(refreshOrdersList, 1000);
+        
+    } catch (error) {
+        addLog('error', `Failed to run test scenario: ${error.message}`);
+    }
 }
 
 // Utility functions
@@ -323,4 +340,41 @@ function addLog(type, message) {
 function clearLogs() {
     document.getElementById('logs').innerHTML = '';
     addLog('info', 'Logs cleared');
+}
+
+// Update form options with current system state
+function updateFormOptions(inventory, balances) {
+    // Update user dropdown
+    const userSelect = document.getElementById('userId');
+    const currentUserId = userSelect.value; // Remember current selection
+    
+    userSelect.innerHTML = '<option value="">Select a user</option>';
+    Object.entries(balances).forEach(([userId, balance]) => {
+        const option = document.createElement('option');
+        option.value = userId;
+        option.textContent = `${userId} ($${balance.toFixed(2)} balance)`;
+        userSelect.appendChild(option);
+    });
+    
+    // Restore current selection if it still exists
+    if (currentUserId && balances.hasOwnProperty(currentUserId)) {
+        userSelect.value = currentUserId;
+    }
+    
+    // Update product dropdown
+    const productSelect = document.getElementById('productId');
+    const currentProductId = productSelect.value; // Remember current selection
+    
+    productSelect.innerHTML = '<option value="">Select a product</option>';
+    Object.entries(inventory).forEach(([productId, quantity]) => {
+        const option = document.createElement('option');
+        option.value = productId;
+        option.textContent = `${productId} (${quantity} units available)`;
+        productSelect.appendChild(option);
+    });
+    
+    // Restore current selection if it still exists
+    if (currentProductId && inventory.hasOwnProperty(currentProductId)) {
+        productSelect.value = currentProductId;
+    }
 } 

@@ -2,24 +2,36 @@
 Mock database implementations for the Saga Pattern demo
 """
 
+from typing import TypeAlias
+
 from .models import Order, SagaTransaction
 
-# Mock databases
-orders_db: dict[str, Order] = {}
+OrderId: TypeAlias = str
+ProductId: TypeAlias = str
+UserId: TypeAlias = str
+SagaId: TypeAlias = str
 
-inventory_db: dict[str, int] = {"product_1": 100, "product_2": 50, "product_3": 25}
+OrdersDB: TypeAlias = dict[OrderId, Order]
+InventoryDB: TypeAlias = dict[ProductId, int]
+UserBalances: TypeAlias = dict[UserId, float]
+SagaTransactions: TypeAlias = dict[SagaId, SagaTransaction]
 
-user_balances: dict[str, float] = {"user_1": 1000.0, "user_2": 500.0, "user_3": 200.0}
 
-saga_transactions: dict[str, SagaTransaction] = {}
+def create_default_orders_db() -> OrdersDB:
+    """Factory method to create default orders database"""
+    return {}
 
 
-def reset_mock_db():
-    """Reset all mock databases to their initial state."""
-    global orders_db, inventory_db, user_balances, saga_transactions
-    orders_db.clear()
-    saga_transactions.clear()
-    inventory_db.clear()
-    inventory_db.update({"product_1": 100, "product_2": 50, "product_3": 25})
-    user_balances.clear()
-    user_balances.update({"user_1": 1000.0, "user_2": 500.0, "user_3": 200.0})
+def create_default_inventory_db() -> InventoryDB:
+    """Factory method to create default inventory database"""
+    return {"product_1": 100, "product_2": 50, "product_3": 25}
+
+
+def create_default_user_balances() -> UserBalances:
+    """Factory method to create default user balances database"""
+    return {"user_1": 1000.0, "user_2": 500.0, "user_3": 200.0}
+
+
+def create_default_saga_transactions() -> SagaTransactions:
+    """Factory method to create default saga transactions database"""
+    return {}

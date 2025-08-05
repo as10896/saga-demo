@@ -17,19 +17,31 @@
             <h2>📚 Understanding the Saga Pattern</h2>
             <p>The Saga pattern is a design pattern for managing distributed transactions across multiple microservices. Instead of using a single database transaction, it breaks down a business transaction into a series of smaller, local transactions.</p>
             
-            <h3>🎯 How it works:</h3>
+            <h3>🎯 How it works</h3>
             <ul>
                 <li><strong>Step-by-step execution:</strong> Each step is a local transaction that can succeed or fail independently</li>
                 <li><strong>Automatic compensation:</strong> If any step fails, compensating actions are executed in reverse order</li>
                 <li><strong>Eventual consistency:</strong> The system maintains consistency across services without traditional ACID transactions</li>
             </ul>
 
-            <h3>🛠️ This demo includes:</h3>
+            <h3>🛠️ This demo includes</h3>
             <ul>
                 <li><strong>Order Processing:</strong> Validate → Reserve Inventory → Process Payment → Ship</li>
                 <li><strong>Compensation Logic:</strong> Automatic rollback on failures</li>
                 <li><strong>Real-time Monitoring:</strong> Track each step's status</li>
                 <li><strong>System State:</strong> View inventory and user balances</li>
+            </ul>
+            
+            <h3>🍪 Session Isolation</h3>
+            <ul>
+                <li>To prevent interference between different users, this website uses cookie-based sessions to isolate each user's state.</li>
+            </ul>
+
+            <h3>📖 More Information</h3>
+            <ul>
+                <li><strong>Source Code:</strong> <a href="https://github.com/as10896/saga-demo" target="_blank" rel="noopener noreferrer" style="color: #1a365d; text-decoration: underline; font-weight: 500;">https://github.com/as10896/saga-demo</a></li>
+                <li><strong>Documentation:</strong> <a href="https://as10896.github.io/saga-demo" target="_blank" rel="noopener noreferrer" style="color: #1a365d; text-decoration: underline; font-weight: 500;">https://as10896.github.io/saga-demo</a></li>
+                <li><strong>Workflow:</strong> <a href="https://as10896.github.io/saga-demo/workflow" target="_blank" rel="noopener noreferrer" style="color: #1a365d; text-decoration: underline; font-weight: 500;">https://as10896.github.io/saga-demo/workflow</a></li>
             </ul>
         </div>
 
@@ -41,9 +53,6 @@
                         <label for="userId">User ID:</label>
                         <select id="userId" required>
                             <option value="">Select a user</option>
-                            <option value="user_1">user_1 ($1000 balance)</option>
-                            <option value="user_2">user_2 ($500 balance)</option>
-                            <option value="user_3">user_3 ($200 balance)</option>
                         </select>
                     </div>
                     
@@ -51,9 +60,6 @@
                         <label for="productId">Product ID:</label>
                         <select id="productId" required>
                             <option value="">Select a product</option>
-                            <option value="product_1">product_1 (100 units available)</option>
-                            <option value="product_2">product_2 (50 units available)</option>
-                            <option value="product_3">product_3 (25 units available)</option>
                         </select>
                     </div>
                     
@@ -102,10 +108,11 @@
                 
                 <button class="btn btn-secondary" onclick="refreshSystemState()">🔄 Refresh State</button>
                 <button class="btn btn-danger" onclick="resetDemoData()">♻️ Reset Demo Data</button>
+                <p style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.9em; color: #666;"><strong>Note:</strong> user_3 will always trigger shipping failure when inventory and balance are sufficient (hardcoded for demo purposes to demonstrate compensation flow).</p>
             </div>
         </div>
 
-        <div class="card test-scenarios">
+        <div class="card test-scenarios" style="margin-top: 2rem;">
             <h2>🧪 Test Scenarios</h2>
             <p>Try these pre-configured scenarios to see different saga behaviors:</p>
             
@@ -114,6 +121,12 @@
                     <h4>✅ Success Scenario</h4>
                     <p>Valid order with sufficient funds and inventory</p>
                     <button class="btn btn-success" onclick="runTestScenario('success')">Run Success Test</button>
+                </div>
+
+                <div class="scenario-card">
+                    <h4>📦 Inventory Failure</h4>
+                    <p>Order with excessive quantity - triggers inventory compensation</p>
+                    <button class="btn btn-danger" onclick="runTestScenario('inventory_failure')">Run Inventory Failure Test</button>
                 </div>
                 
                 <div class="scenario-card">
@@ -127,23 +140,17 @@
                     <p>Order for user_3 - shipping fails, payment refunded</p>
                     <button class="btn btn-warning" onclick="runTestScenario('shipping_failure')">Run Shipping Failure Test</button>
                 </div>
-                
-                <div class="scenario-card">
-                    <h4>📦 Inventory Failure</h4>
-                    <p>Order with insufficient inventory</p>
-                    <button class="btn btn-danger" onclick="runTestScenario('inventory_failure')">Run Inventory Failure Test</button>
-                </div>
             </div>
         </div>
 
-        <div class="card full-width">
+        <div class="card full-width" style="margin-top: 2rem;">
             <h2>📋 Recent Orders & Saga Transactions</h2>
             <div id="ordersList">
                 <p>No orders created yet. Create an order to see saga transactions here.</p>
             </div>
         </div>
 
-        <div class="card full-width">
+        <div class="card full-width" style="margin-top: 2rem;">
             <h2>📝 Activity Logs</h2>
             <div id="logs" class="logs">
                 <div class="log-entry info">System initialized. Ready to process orders.</div>

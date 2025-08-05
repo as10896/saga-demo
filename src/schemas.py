@@ -111,7 +111,6 @@ class ResetResponse(BaseModel):
     )
 
 
-# Error Response Schemas
 class ErrorResponse(BaseModel):
     """Standard error response schema"""
 
