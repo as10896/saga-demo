@@ -1,8 +1,5 @@
 """
 FastAPI dependency injection functions.
-
-This module contains all the dependency injection logic used by API endpoints,
-making it easy to understand how sessions and other dependencies work.
 """
 
 from typing import Annotated

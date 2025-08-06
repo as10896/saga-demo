@@ -1,9 +1,5 @@
 """
 Main FastAPI application with Saga Pattern demonstration endpoints.
-
-This module contains the core API endpoints for demonstrating the Saga pattern
-in a clean, easy-to-understand way. All infrastructure code has been moved
-to separate modules for better organization.
 """
 
 import logging
