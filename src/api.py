@@ -10,13 +10,13 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import schemas
-from .dependencies import SessionDep, get_user_session
+from .dependencies import SessionDep
 from .models import Order
 from .orchestrator import SagaOrchestrator
 from .redis_config import get_session_manager, redis_lifespan
