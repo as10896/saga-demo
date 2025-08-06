@@ -11,9 +11,12 @@ Key Concepts:
 - All data is serialized/deserialized automatically for Redis storage
 """
 
+import logging
 import secrets
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from typing import AsyncGenerator
 
 import redis.asyncio as redis
 from pydantic import BaseModel
@@ -29,6 +32,8 @@ from .database import (
     create_default_user_balances,
 )
 from .models import Order, SagaTransaction
+
+logger = logging.getLogger(__name__)
 
 
 class SessionData(BaseModel):
@@ -240,5 +245,78 @@ class AsyncSessionManager:
             await self.save_session(session)
 
 
-# Global async session manager instance (will be initialized in lifespan)
-async_session_manager: AsyncSessionManager | None = None
+# ============================================================================
+# Redis Integration and Lifecycle Management
+# ============================================================================
+
+
+async def create_session_manager_with_redis(
+    redis_url: str = "redis://localhost:6379", session_timeout: int = 3600
+) -> AsyncSessionManager:
+    """Create a session manager with Redis backend."""
+    from .redis_config import create_redis_client
+
+    redis_client = await create_redis_client(redis_url)
+    return AsyncSessionManager(redis_client, session_timeout)
+
+
+@asynccontextmanager
+async def session_manager_lifespan(
+    session_timeout: int = 3600,
+) -> AsyncGenerator[AsyncSessionManager, None]:
+    """
+    Manage session manager lifecycle with Redis backend.
+
+    This context manager:
+    1. Creates Redis connection and session manager on startup
+    2. Yields the session manager for use
+    3. Closes connections on shutdown
+    """
+    global _session_manager
+
+    try:
+        # Startup: Initialize session manager with Redis
+        logger.info("Starting session manager...")
+        from .redis_config import get_redis_url
+
+        redis_url = get_redis_url()
+        _session_manager = await create_session_manager_with_redis(
+            redis_url, session_timeout
+        )
+        logger.info("Session manager ready")
+
+        yield _session_manager
+
+    except redis.ConnectionError as e:
+        logger.error(f"Failed to connect to Redis: {e}")
+        logger.error("Make sure Redis is running and accessible")
+        raise
+
+    except Exception as e:
+        logger.error(f"Session manager startup error: {e}")
+        raise
+
+    finally:
+        # Shutdown: Clean up connections
+        if _session_manager:
+            await _session_manager.redis_client.aclose()
+            _session_manager = None
+            logger.info("Session manager connections closed")
+
+
+def get_session_manager() -> AsyncSessionManager:
+    """
+    Get the current session manager instance.
+
+    Raises:
+        RuntimeError: If session manager is not initialized
+    """
+    if not _session_manager:
+        raise RuntimeError(
+            "Session manager not available. Make sure it's initialized in lifespan."
+        )
+    return _session_manager
+
+
+# Global session manager instance (will be initialized in lifespan)
+_session_manager: AsyncSessionManager | None = None

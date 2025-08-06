@@ -15,7 +15,7 @@ from . import schemas
 from .dependencies import SessionDep
 from .models import Order
 from .orchestrator import SagaOrchestrator
-from .redis_config import get_session_manager, redis_lifespan
+from .session_manager import get_session_manager, session_manager_lifespan
 from .utils import url_for
 
 # Configure logging
@@ -57,9 +57,9 @@ async def lifespan(app: FastAPI):
     """
     Application lifespan manager.
 
-    Handles Redis connection and cleanup using the redis_config module.
+    Handles session manager initialization with Redis backend.
     """
-    async with redis_lifespan():
+    async with session_manager_lifespan():
         yield
 
 

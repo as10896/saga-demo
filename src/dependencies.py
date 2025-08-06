@@ -6,8 +6,7 @@ from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, Response, status
 
-from .redis_config import get_session_manager
-from .session_manager import UserSession
+from .session_manager import UserSession, get_session_manager
 
 
 async def get_user_session(
