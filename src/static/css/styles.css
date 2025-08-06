@@ -405,6 +405,47 @@ body {
   color: #2f54eb;
 }
 
+/* Smooth transitions for orders list */
+.orders-container {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.orders-container.loading {
+  opacity: 0.6;
+}
+
+.orders-container.updating {
+  opacity: 0.8;
+}
+
+.order-item {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading indicator for orders */
+.orders-loading-indicator {
+  display: none;
+  text-align: center;
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.orders-loading-indicator.visible {
+  display: block;
+}
+
 @media (max-width: 768px) {
   .main-content {
     grid-template-columns: 1fr;

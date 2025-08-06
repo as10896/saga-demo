@@ -1,6 +1,10 @@
 const API_BASE = '';
 let orders = [];
 let currentSagaId = null;
+let lastOrdersHash = null; // Track changes to avoid unnecessary updates
+let updateDebounceTimer = null; // Debounce rapid updates
+let lastSagaStatus = {}; // Track saga status to avoid unnecessary updates
+let isRefreshInProgress = false; // Prevent overlapping refreshes
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function () {
@@ -62,8 +66,8 @@ async function createOrder(orderData) {
 
       // Refresh system state after a delay
       setTimeout(refreshSystemState, 2000);
-      // Refresh orders list after a delay
-      setTimeout(refreshOrdersList, 1000);
+      // Refresh orders list immediately to show new order (force = true, no loading indicator)
+      setTimeout(() => refreshOrdersList(true, false), 500);
     } else {
       addLog('error', `Failed to create order: ${data.detail}`);
       displayError(data.detail);
@@ -127,6 +131,9 @@ async function monitorSaga(sagaId) {
   let attempts = 0;
   const maxAttempts = 30; // 30 seconds max
 
+  // Initialize tracking for this saga
+  lastSagaStatus[sagaId] = 'processing';
+
   const interval = setInterval(async () => {
     attempts++;
 
@@ -137,10 +144,30 @@ async function monitorSaga(sagaId) {
       if (response.ok) {
         updateSagaStatus(data);
 
-        if (data.status === 'completed' || data.status === 'failed') {
+        const previousStatus = lastSagaStatus[sagaId];
+        const currentStatus = data.status;
+
+        // Only refresh orders list when saga actually completes or fails
+        // (not during intermediate processing steps)
+        if (
+          currentStatus !== previousStatus &&
+          (currentStatus === 'completed' || currentStatus === 'failed')
+        ) {
           clearInterval(interval);
-          addLog('info', `Saga ${sagaId} finished with status: ${data.status}`);
+          addLog(
+            'info',
+            `Saga ${sagaId} finished with status: ${currentStatus}`,
+          );
           refreshSystemState();
+
+          // Use debounced refresh to prevent glittering, no loading indicator since saga just finished
+          debouncedRefreshOrdersList(500, false, false);
+
+          // Clean up tracking
+          delete lastSagaStatus[sagaId];
+        } else {
+          // Update our tracking but don't refresh orders list
+          lastSagaStatus[sagaId] = currentStatus;
         }
       }
     } catch (error) {
@@ -150,6 +177,8 @@ async function monitorSaga(sagaId) {
     if (attempts >= maxAttempts) {
       clearInterval(interval);
       addLog('warning', `Saga monitoring timeout after ${maxAttempts} seconds`);
+      // Clean up tracking
+      delete lastSagaStatus[sagaId];
     }
   }, 1000);
 }
@@ -232,17 +261,73 @@ async function refreshSystemState() {
   }
 }
 
-// Fetch and display recent orders
-async function refreshOrdersList() {
+// Debounced version of refreshOrdersList to prevent rapid updates
+function debouncedRefreshOrdersList(
+  delay = 1000,
+  force = false,
+  showLoading = true,
+) {
+  if (updateDebounceTimer) {
+    clearTimeout(updateDebounceTimer);
+  }
+
+  // Don't start another refresh if one is already in progress
+  if (isRefreshInProgress && !force) {
+    return;
+  }
+
+  updateDebounceTimer = setTimeout(() => {
+    refreshOrdersList(force, showLoading);
+    updateDebounceTimer = null;
+  }, delay);
+}
+
+// Fetch and display recent orders with smooth transitions
+async function refreshOrdersList(force = false, showLoading = true) {
+  // Prevent overlapping refreshes
+  if (isRefreshInProgress && !force) {
+    return;
+  }
+
+  isRefreshInProgress = true;
   const ordersList = document.getElementById('ordersList');
-  ordersList.innerHTML = '<p>Loading...</p>';
+  const ordersContainer = document.getElementById('ordersContainer');
+  const loadingIndicator = document.getElementById('ordersLoadingIndicator');
+
   try {
+    // Show subtle loading state without replacing content (only if showLoading is true)
+    if (!force && showLoading) {
+      ordersContainer.classList.add('updating');
+      loadingIndicator.classList.add('visible');
+    }
+
     const response = await fetch(`${API_BASE}/orders`);
     const data = await response.json();
-    if (Array.isArray(data) && data.length > 0) {
-      const html = data
-        .map(
-          order => `
+
+    // Create hash of the orders data to check for meaningful changes
+    // Only include fields that matter for display and final status
+    const ordersHash = JSON.stringify(
+      data.map(order => ({
+        id: order.id,
+        // Only track final status changes (completed/failed), not intermediate processing
+        status: order.status === 'processing' ? 'processing' : order.status,
+        user_id: order.user_id,
+        product_id: order.product_id,
+        quantity: order.quantity,
+        amount: order.amount,
+      })),
+    );
+
+    // Only update if data has changed or if forced
+    if (force || ordersHash !== lastOrdersHash) {
+      lastOrdersHash = ordersHash;
+
+      // Prepare new content
+      let newContent;
+      if (Array.isArray(data) && data.length > 0) {
+        const html = data
+          .map(
+            order => `
                 <div class="order-item">
                     <div><strong>Order ID:</strong> ${order.id}</div>
                     <div><strong>User:</strong> ${order.user_id}</div>
@@ -252,19 +337,56 @@ async function refreshOrdersList() {
                       2,
                     )}</div>
                     <div><strong>Status:</strong> <span class="status-indicator status-${order.status.toLowerCase()}">${
-            order.status
-          }</span></div>
+              order.status
+            }</span></div>
                 </div>
             `,
-        )
-        .join('<hr/>');
-      ordersList.innerHTML = html;
+          )
+          .join('<hr/>');
+        newContent = html;
+      } else {
+        newContent =
+          '<p>No orders created yet. Create an order to see saga transactions here.</p>';
+      }
+
+      // Smooth transition: fade out, update content, fade in
+      ordersContainer.style.transition = 'opacity 0.2s ease-in-out';
+      ordersContainer.style.opacity = '0.4';
+
+      setTimeout(() => {
+        ordersList.innerHTML = newContent;
+        ordersContainer.style.opacity = '1';
+        ordersContainer.classList.remove('updating');
+        // Reset transition for normal CSS handling
+        setTimeout(() => {
+          ordersContainer.style.transition = '';
+        }, 200);
+      }, 100);
     } else {
-      ordersList.innerHTML =
-        '<p>No orders created yet. Create an order to see saga transactions here.</p>';
+      // No changes, just remove loading state
+      ordersContainer.classList.remove('updating');
     }
   } catch (error) {
-    ordersList.innerHTML = `<p class="error-message">Failed to load orders: ${error.message}</p>`;
+    // Handle error gracefully without jarring content replacement
+    const errorMessage = `<p class="error-message">Failed to load orders: ${error.message}</p>`;
+
+    ordersContainer.style.transition = 'opacity 0.2s ease-in-out';
+    ordersContainer.style.opacity = '0.4';
+    setTimeout(() => {
+      ordersList.innerHTML = errorMessage;
+      ordersContainer.style.opacity = '1';
+      ordersContainer.classList.remove('updating');
+      // Reset transition
+      setTimeout(() => {
+        ordersContainer.style.transition = '';
+      }, 200);
+    }, 100);
+  } finally {
+    // Always hide loading indicator and reset refresh state
+    setTimeout(() => {
+      loadingIndicator.classList.remove('visible');
+      isRefreshInProgress = false;
+    }, 200);
   }
 }
 
@@ -278,7 +400,8 @@ async function resetDemoData() {
       addLog('success', data.message || 'Demo data reset.');
       refreshSystemState();
       document.getElementById('orderResult').innerHTML = '';
-      refreshOrdersList();
+      // Force refresh orders list after reset (immediate update needed, no loading indicator)
+      refreshOrdersList(true, false);
     } else {
       addLog('error', data.message || 'Failed to reset demo data.');
     }
@@ -338,8 +461,8 @@ async function runTestScenario(scenario) {
 
     // Submit the form
     document.getElementById('orderForm').dispatchEvent(new Event('submit'));
-    // Refresh orders list after a delay
-    setTimeout(refreshOrdersList, 1000);
+    // Use debounced refresh for test scenarios, no loading since order creation will show loading
+    debouncedRefreshOrdersList(1200, false, false);
   } catch (error) {
     addLog('error', `Failed to run test scenario: ${error.message}`);
   }

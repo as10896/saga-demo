@@ -269,11 +269,16 @@
 
       <div class="card full-width" style="margin-top: 2rem">
         <h2>📋 Recent Orders & Saga Transactions</h2>
-        <div id="ordersList">
-          <p>
-            No orders created yet. Create an order to see saga transactions
-            here.
-          </p>
+        <div class="orders-loading-indicator" id="ordersLoadingIndicator">
+          Loading orders...
+        </div>
+        <div class="orders-container" id="ordersContainer">
+          <div id="ordersList">
+            <p>
+              No orders created yet. Create an order to see saga transactions
+              here.
+            </p>
+          </div>
         </div>
       </div>
 
