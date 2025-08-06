@@ -20,6 +20,7 @@ from .dependencies import SessionDep
 from .models import Order
 from .orchestrator import SagaOrchestrator
 from .redis_config import get_session_manager, redis_lifespan
+from .utils import url_for
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -77,6 +78,7 @@ app = FastAPI(
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 templates = Jinja2Templates(directory="src/templates")
+templates.env.globals["url_for"] = url_for
 
 # Initialize saga orchestrator
 saga_orchestrator = SagaOrchestrator()
