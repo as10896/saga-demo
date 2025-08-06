@@ -9,14 +9,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from . import schemas
 from .dependencies import SessionDep
 from .models import Order
 from .orchestrator import SagaOrchestrator
 from .session_manager import get_session_manager, session_manager_lifespan
-from .utils import url_for
+from .templating import templates
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -73,8 +72,6 @@ app = FastAPI(
 
 # Mount static files and templates
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
-templates = Jinja2Templates(directory="src/templates")
-templates.env.globals["url_for"] = url_for
 
 # Initialize saga orchestrator
 saga_orchestrator = SagaOrchestrator()
