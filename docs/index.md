@@ -2,7 +2,7 @@
 
 A comprehensive implementation of the **Saga Pattern** for handling distributed transactions in microservices architecture, built with Python and FastAPI.
 
-A live version is available [here](https://involved-aubry-as10896-270cd4f4.koyeb.app/).
+A live version is available <a href="https://involved-aubry-as10896-270cd4f4.koyeb.app/" target="_blank">here</a>.
 
 ## 📋 Overview
 
@@ -33,7 +33,7 @@ The Saga pattern is a design pattern for managing distributed transactions acros
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/)
+- <a href="https://docs.docker.com/get-docker/" target="_blank">Docker</a> and <a href="https://docs.docker.com/compose/" target="_blank">Docker Compose</a>
 
 ### Installation Steps
 
@@ -48,8 +48,8 @@ The Saga pattern is a design pattern for managing distributed transactions acros
   ```
 
 3. **Access the application:**
-    - **Interactive Web UI**: [http://localhost:8000](http://localhost:8000)
-    - **Swagger UI Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
+    - **Interactive Web UI**: <a href="http://localhost:8000" target="_blank">http://localhost:8000</a>
+    - **Swagger UI Documentation**: <a href="http://localhost:8000/docs" target="_blank">http://localhost:8000/docs</a>
 
 
 ## 📊 API Endpoints
@@ -252,7 +252,7 @@ async def get_order(order_id: str) -> Order:
 
 ### Additional Resources
 
-- [Microservices.io - Saga Pattern](https://microservices.io/patterns/data/saga.html)
+- <a href="https://microservices.io/patterns/data/saga.html" target="_blank">Microservices.io - Saga Pattern</a>
 
 ### Related Patterns
 
