@@ -15,11 +15,10 @@ import logging
 import secrets
 import time
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
 from typing import AsyncGenerator
 
 import redis.asyncio as redis
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .database import (
     InventoryDB,
@@ -31,31 +30,11 @@ from .database import (
     create_default_saga_transactions,
     create_default_user_balances,
 )
-from .models import Order, SagaTransaction
 
 logger = logging.getLogger(__name__)
 
 
-class SessionData(BaseModel):
-    """
-    Serializable session data for Redis storage.
-
-    This model converts the complex session data into a format that can be stored in Redis as JSON.
-    Pydantic handles the serialization automatically.
-    """
-
-    session_id: str
-    created_at: float
-
-    # Store serialized versions of complex objects
-    orders_db: dict[str, dict]  # Serialized Order objects
-    inventory_db: InventoryDB  # Simple dict, no serialization needed
-    user_balances: UserBalances  # Simple dict, no serialization needed
-    saga_transactions: dict[str, dict]  # Serialized SagaTransaction objects
-
-
-@dataclass
-class UserSession:
+class UserSession(BaseModel):
     """
     Represents a user session with isolated database state.
 
@@ -64,57 +43,20 @@ class UserSession:
     - Creation timestamp for reference
     - Isolated database state (orders, inventory, balances, sagas)
 
-    The session can be converted to/from Redis-storable format automatically.
-    Redis handles session expiration automatically, so no manual timeout tracking needed.
+    As a Pydantic BaseModel, this class automatically handles serialization/deserialization to/from JSON for Redis storage.
+    Redis handles session expiration automatically.
     """
 
     session_id: str
     created_at: float
 
     # Isolated database state for this user - each user sees their own data
-    orders_db: OrdersDB = field(default_factory=create_default_orders_db)
-    inventory_db: InventoryDB = field(default_factory=create_default_inventory_db)
-    user_balances: UserBalances = field(default_factory=create_default_user_balances)
-    saga_transactions: SagaTransactions = field(
+    orders_db: OrdersDB = Field(default_factory=create_default_orders_db)
+    inventory_db: InventoryDB = Field(default_factory=create_default_inventory_db)
+    user_balances: UserBalances = Field(default_factory=create_default_user_balances)
+    saga_transactions: SagaTransactions = Field(
         default_factory=create_default_saga_transactions
     )
-
-    def to_session_data(self) -> SessionData:
-        """
-        Convert session to Redis-storable format.
-
-        This method serializes complex objects (Orders, SagaTransactions) to dictionaries that can be stored as JSON in Redis.
-        """
-        return SessionData(
-            session_id=self.session_id,
-            created_at=self.created_at,
-            # Convert Pydantic models to dicts for Redis storage
-            orders_db={k: v.model_dump() for k, v in self.orders_db.items()},
-            inventory_db=self.inventory_db,
-            user_balances=self.user_balances,
-            saga_transactions={
-                k: v.model_dump() for k, v in self.saga_transactions.items()
-            },
-        )
-
-    @classmethod
-    def from_session_data(cls, data: SessionData) -> "UserSession":
-        """
-        Create UserSession from Redis data.
-
-        This method deserializes the stored JSON data back into proper Python objects with full type safety.
-        """
-        return cls(
-            session_id=data.session_id,
-            created_at=data.created_at,
-            # Convert dicts back to Pydantic models
-            orders_db={k: Order(**v) for k, v in data.orders_db.items()},
-            inventory_db=data.inventory_db,
-            user_balances=data.user_balances,
-            saga_transactions={
-                k: SagaTransaction(**v) for k, v in data.saga_transactions.items()
-            },
-        )
 
 
 class AsyncSessionManager:
@@ -162,11 +104,10 @@ class AsyncSessionManager:
 
         session = UserSession(session_id=session_id, created_at=current_time)
 
-        # Store in Redis with automatic expiration
+        # Store in Redis with automatic expiration using Pydantic's built-in JSON serialization
         session_key = self._get_session_key(session_id)
-        session_data = session.to_session_data()
         await self.redis_client.setex(
-            session_key, self.session_timeout, session_data.model_dump_json()
+            session_key, self.session_timeout, session.model_dump_json()
         )
 
         return session
@@ -178,15 +119,14 @@ class AsyncSessionManager:
         Returns None if session not found or expired (Redis handles expiration automatically).
         """
         session_key = self._get_session_key(session_id)
-        session_json = await self.redis_client.get(session_key)
+        session_json: bytes = await self.redis_client.get(session_key)
 
         if not session_json:
             return None
 
         try:
-            # Deserialize from Redis JSON
-            session_data = SessionData.model_validate_json(session_json)
-            return UserSession.from_session_data(session_data)
+            # Deserialize from Redis JSON using Pydantic's built-in method
+            return UserSession.model_validate_json(session_json)
 
         except Exception:
             # If deserialization fails, delete corrupted session
@@ -197,8 +137,7 @@ class AsyncSessionManager:
         """
         Get existing session or create new one if not found.
 
-        This is the main method used by the API to ensure every request
-        has a valid session.
+        This is the main method used by the API to ensure every request has a valid session.
         """
         if session_id:
             session = await self.get_session(session_id)
@@ -218,21 +157,19 @@ class AsyncSessionManager:
         """
         Save session data to Redis.
 
-        This method is called after saga execution to persist any changes
-        made to the session data. The session expiration is reset on each save.
+        This method is called after saga execution to persist any changes made to the session data.
+        The session expiration is reset on each save.
         """
         session_key = self._get_session_key(session.session_id)
-        session_data = session.to_session_data()
         await self.redis_client.setex(
-            session_key, self.session_timeout, session_data.model_dump_json()
+            session_key, self.session_timeout, session.model_dump_json()
         )
 
     async def reset_session_db(self, session_id: str) -> None:
         """
         Reset mock databases to their initial state for a specific session.
 
-        This is useful for the demo to allow users to reset their data
-        and try different scenarios.
+        This is useful for the demo to allow users to reset their data and try different scenarios.
         """
         session = await self.get_session(session_id)
         if session:
