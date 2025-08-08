@@ -22,4 +22,4 @@ EXPOSE 8000
 ENV PORT=8000
 
 # To handle variable expansion (for port forwarding) and signal forwarding (for graceful shutdown) simultaneously
-CMD exec uv run -- fastapi run src/api.py --host 0.0.0.0 --port ${PORT:-8000}
+CMD exec uv run -- granian src.api:app --interface asgi --host 0.0.0.0 --port ${PORT:-8000}
