@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "saga-demo-keepalive",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  // Run once a day (UTC) so the Upstash Redis instance never goes idle
+  "triggers": {
+    "crons": ["0 0 * * *"]
+  },
+  "vars": {
+    // Must be an endpoint that uses SessionDep, otherwise Redis is not touched (e.g. NOT /health)
+    "TARGET_URL": "https://involved-aubry-as10896-270cd4f4.koyeb.app/inventory"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
